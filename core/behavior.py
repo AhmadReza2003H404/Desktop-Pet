@@ -17,6 +17,7 @@ FOREVER = 1e9      # "until woken"
 HARD_LANDING = 1500.0
 FOLLOW_GAP = 70.0  # how close it walks up to the cursor
 RUN_DISTANCE = 350.0
+MOOD_CHANCE = 0.35  # how often a hungry pet begs, or a sad one sulks, instead of its usual choice
 
 
 def is_night() -> bool:
@@ -254,6 +255,11 @@ class Brain:
             self.blink_in = 0.25 if random.random() < 0.2 else random.uniform(2, 6)
 
     def _choose_next(self, body: Body, area: QRect):
+        if self.mode != Mode.FOLLOW and random.random() < MOOD_CHANCE:
+            if self.needs.hungry and self.start_special("beg", body, area):
+                return
+            if self.needs.sad and self.start_special("sulk", body, area):
+                return
         weights = dict(self.pet.idle_weights)
         if self.pet.specials and self.mode == Mode.WANDER and not self.needs.tired:
             weights[State.SPECIAL] = self.pet.special_weight
@@ -289,5 +295,5 @@ class Brain:
         self.target_x = max(lo, min(hi, body.x + distance))
         if abs(self.target_x - body.x) < 20:  # pinned against an edge: go the other way
             self.target_x = max(lo, min(hi, body.x - distance))
-        self.speed_mult = 1.0
+        self.speed_mult = 0.65 if self.needs.hungry or self.needs.sad else 1.0  # dragging its feet
         self._set(State.WALK, 15.0)  # give up if somehow stuck

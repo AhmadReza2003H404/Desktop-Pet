@@ -453,6 +453,44 @@ class Rocket(Special):
         return True
 
 
+class Beg(Special):
+    """Hungry: sit up with big pleading eyes, bounce, and stare at you until fed."""
+    name = "beg"
+    pose = "beg"
+
+    def __init__(self, brain, body, area, cursor_x, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        self.duration = random.uniform(4.0, 6.0)
+        brain.events.append("beg")
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        self.t += dt
+        self.brain.facing = 1 if cursor_x > body.x + body.w / 2 else -1
+        if int(self.t / 1.6) != int((self.t - dt) / 1.6):
+            self.brain.events.append("rumble")  # tummy grumbles every so often
+        return self.t > self.duration
+
+
+class Sulk(Special):
+    """Unhappy: turn away from you, slump, and sigh under a little rain cloud."""
+    name = "sulk"
+    pose = "sulk"
+
+    def __init__(self, brain, body, area, cursor_x, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        self.duration = random.uniform(6.0, 9.0)
+        brain.facing = -1 if cursor_x > body.x + body.w / 2 else 1  # back to you
+        brain.events.append("sulk")
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        self.t += dt
+        if int(self.t / 3.0) != int((self.t - dt) / 3.0):
+            self.brain.events.append("sigh")
+        return self.t > self.duration
+
+
 class Dots(Special):
     """Dot Dash, the arcade mini-game: race to gobble the nearest dot."""
     name = "dots"
@@ -478,7 +516,7 @@ class Dots(Special):
 
 SPECIALS: dict[str, type[Special]] = {
     cls.name: cls for cls in (Zoomies, Pounce, TailChase, Roll, Pronk, Headbutt, BellySlide, Cling, Chase, Flee,
-                              Fetch, Laser, Dance, Phase, Haunt, Rocket, Dots)
+                              Fetch, Laser, Dance, Phase, Haunt, Rocket, Beg, Sulk, Dots)
 }
 
 # tricks a pet can be asked to do from the menu (the rest are games and reactions)

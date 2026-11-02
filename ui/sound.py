@@ -21,7 +21,7 @@ except ImportError:  # Qt built without multimedia
 
 RATE = 22050
 CACHE = cache_dir() / "sounds"
-VERSION = 2  # bump to regenerate the files after changing a recipe
+VERSION = 3  # bump to regenerate the files after changing a recipe
 
 
 def _tone(seconds: float, freq, harmonics=(1.0,), vibrato=(0.0, 0.0), envelope=None, noise=0.0):
@@ -90,6 +90,10 @@ RECIPES = {
                             for f in (523, 659, 784, 1047, 1319, 1568)), []),
     "fanfare": lambda: sum((_tone(d, f, harmonics=(1, 0, 0.35, 0, 0.2), envelope=lambda x: (1 - x * 0.6))
                             for f, d in ((523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.32))), []),
+    "rumble": lambda: _lowpass(_tone(0.6, lambda x: 70 + 20 * math.sin(x * 30), harmonics=(1, 0.8, 0.5), noise=0.35,
+                                     envelope=lambda x: math.sin(math.pi * x) * (0.6 + 0.4 * math.sin(x * 40))), 0.12),
+    "sigh": lambda: _lowpass(_tone(0.8, lambda x: 320 - 140 * x, harmonics=(1, 0.3), noise=0.55,
+                                   envelope=lambda x: math.sin(math.pi * x) ** 1.5), 0.15),
     "tune": lambda: sum((_tone(0.12, f, harmonics=(1, 0, 0.3), envelope=lambda x: (1 - x) ** 0.7)
                          for f in (659, 784, 880, 784, 659, 523, 587, 659)), []),
 }

@@ -122,6 +122,16 @@ class Quadruped(Pet):
             return self.pose_slide, v
         if name in ("cling", "cling_sleep"):
             return self.pose_cling, v
+        if name == "beg":  # sitting up, bouncing, huge pleading eyes
+            p.translate(0, -abs(math.sin(v.t * 7)) * 4)
+            p.rotate(math.sin(v.t * 3) * 3)
+            return (lambda p_, v_, look: self.pose_sit(p_, v_, (look[0], -0.6), wide=True)), \
+                replace(v, state=State.SIT, mood="hungry")
+        if name == "sulk":  # slumped, head down, swaying sadly
+            p.scale(1.04, 0.93)
+            p.rotate(-3 + math.sin(v.t * 1.2) * 1.5)
+            return (lambda p_, v_, look: self.pose_sit(p_, v_, (0.25, 1.0))), \
+                replace(v, state=State.SIT, mood="sad")
         if name == "dance":
             p.translate(0, -abs(math.sin(v.t * 7)) * 7)
             p.rotate(math.sin(v.t * 7) * 9)
@@ -173,7 +183,7 @@ class Quadruped(Pet):
             self.head(p, c, r, v, look, wide=falling)
         return c + QPointF(0, -r)
 
-    def pose_sit(self, p: QPainter, v: PetView, look) -> QPointF:
+    def pose_sit(self, p: QPainter, v: PetView, look, wide: bool = False) -> QPointF:
         bk, hk = self.body_k, self.head_k
         rx, ry = self.body_rx * bk, self.body_ry * bk
         breathe = 1 + 0.025 * math.sin(v.t * 2.4)
@@ -193,7 +203,7 @@ class Quadruped(Pet):
 
         r = self.head_r * hk
         c = QPointF(rx * 0.1, bcy - bry - 10 * hk)
-        self.head(p, c, r, v, look, eyes="happy" if happy else "open")
+        self.head(p, c, r, v, look, eyes="happy" if happy else "open", wide=wide)
         return c + QPointF(0, -r)
 
     def pose_sleep(self, p: QPainter, v: PetView, look) -> QPointF:

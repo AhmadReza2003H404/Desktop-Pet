@@ -175,6 +175,12 @@ class PixelPet(Pet):
                 p.translate(0, h / 2 + lift)
             elif name == "crouch":
                 p.scale(1.12, 0.78)
+            elif name == "beg":
+                p.translate(0, -abs(math.sin(v.t * 7)) * 5)
+                p.rotate(math.sin(v.t * 3) * 4)
+            elif name == "sulk":
+                p.scale(1.06, 0.9)
+                p.rotate(-4 + math.sin(v.t * 1.2) * 2)
             elif name == "dance":
                 p.translate(0, -abs(math.sin(v.t * 7)) * 8)
                 p.rotate(math.sin(v.t * 7) * 12)
@@ -212,6 +218,10 @@ class PixelPet(Pet):
         p.setPen(Qt.NoPen)
         ink = self.colour("pupil")
         look = (v.look[0] * v.facing, v.look[1])
+        if v.special == "sulk":
+            look = (0.3, 1.0)  # staring at the floor
+        elif v.special == "beg":
+            look = (0.6, -1.0)  # gazing up at you
         if v.state == State.SLEEP or v.special == "cling_sleep":
             eyes = "sleep"
         elif v.state == State.HAPPY:
@@ -250,6 +260,8 @@ class PixelPet(Pet):
                 dr = round((look[1] + 1) / 2 * (e.h - ph))
                 self._block(p, origin, px, e.col + dc, e.row + dr, pw, ph,
                             ink if self.sclera else self.colour("glow"))
+                if v.special == "beg":  # sparkly pleading eyes
+                    self._block(p, origin, px, e.col + dc, e.row + dr, 0.5, 0.5, QColor(255, 255, 255))
                 if v.mood == "tired":
                     self._block(p, origin, px, e.col, e.row, e.w, 1, self.colour("base"))
                 elif v.mood in ("sad", "hungry"):
@@ -266,7 +278,7 @@ class PixelPet(Pet):
             return "open"
         if v.state == State.SLEEP:
             return "flat"
-        if v.mood in ("sad", "hungry"):
+        if v.mood in ("sad", "hungry") or v.special in ("beg", "sulk"):
             return "sad"
         return "smile"
 

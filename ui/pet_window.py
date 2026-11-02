@@ -261,6 +261,7 @@ class PetWindow(QWidget):
         if self.brain.state != State.HAPPY:
             return
         self.needs.cheer(6)
+        self.effects.cheer_up()  # a pat chases the rain cloud away
         self.effects.heart(3)
         self.app.sounds.play("pop", 0.6)
         self.add_love("pet")
@@ -399,6 +400,7 @@ class PetWindow(QWidget):
         if event == "ate":
             sounds.play("munch")
             self.needs.fed()
+            self.effects.cheer_up()
             self.add_love("fed")
             self.app.record("meals")
             self.effects.heart(2)
@@ -421,6 +423,17 @@ class PetWindow(QWidget):
         elif event == "trick":
             self.add_love("trick")
             self.app.record("tricks")
+        elif event == "beg":
+            self.effects.think_of(self.pet.favorite_food, 5.5)
+            self.say("hungry")
+        elif event == "rumble":
+            sounds.play("rumble", 0.8)
+            self.brain.squash = 0.08  # the whole tummy wobbles
+        elif event == "sulk":
+            self.effects.rain_cloud(8.0)
+            self.say("sad")
+        elif event == "sigh":
+            sounds.play("sigh", 0.6)
         elif event == "dance":
             sounds.play("tune", 0.6)
             self.effects.music(5)
