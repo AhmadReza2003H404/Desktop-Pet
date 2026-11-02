@@ -25,6 +25,10 @@ your computer. Works on **Linux** and **Windows**.
   desktop. *Auto* picks the weather from the season. Clicks pass straight through.
 - **🏆 Achievements:** 20 goals to unlock, from "Hello, friend" to "High score" and "Liftoff".
   Find them in the right-click menu.
+- **😢 Moods you can see:** a hungry pet sits up and begs with big pleading eyes. Its tummy
+  rumbles and a thought bubble shows the food it's dreaming of. An unhappy pet turns its back,
+  slumps and sighs under its own little rain cloud. Petting or feeding chases the gloom away.
+  Hungry or sad pets also walk more slowly.
 - **🕺 Dance parties:** any pet can dance (floating music notes included). Pick a specific
   trick from the new *Tricks* menu.
 - **Always on top:** pets walk along the bottom of your screen above every window.
