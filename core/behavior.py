@@ -9,7 +9,7 @@ from PySide6.QtCore import QRect
 from core.needs import Needs
 from core.pet import Pet, State
 from core.physics import Body
-from core.specials import SPECIALS, Special
+from core.specials import SPECIALS, TRICKS, Special
 
 RESTING = (State.IDLE, State.SIT, State.SLEEP, State.HAPPY, State.EAT)
 GROUNDED = RESTING + (State.WALK, State.SPECIAL)
@@ -50,6 +50,7 @@ class Brain:
         self.landed_once = False     # the drop-in when the app starts isn't worth an "ouch"
         self.special: Special | None = None
         self.cursor_x = 0.0
+        self.boost = 1.0             # power-ups in the arcade game make it zoom
 
     @property
     def blinking(self) -> bool:
@@ -83,6 +84,8 @@ class Brain:
         self.speed_mult = 1.0
         self._set(State.SPECIAL)
         self.special = cls(self, body, area, self.cursor_x, **kwargs)
+        if name in TRICKS:
+            self.events.append("trick")
         return True
 
     def doing(self, name: str) -> bool:
