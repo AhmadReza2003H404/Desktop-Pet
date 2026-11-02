@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QInputDialog, QMenu
 from core import progress
 from core.behavior import Mode
 from core.pet import State
+from core.specials import TRICKS
 
 if TYPE_CHECKING:
     from ui.app import PetApp
@@ -38,6 +39,10 @@ def fill_menu(menu: QMenu, win: PetWindow, app: PetApp):
     if app.ball is not None:
         menu.addAction("Put the ball away", app.remove_ball)
     menu.addAction("Do a trick!", win.trick)
+    tricks = menu.addMenu("Tricks")
+    for name in dict.fromkeys(win.pet.specials + ["dance"]):
+        if name in TRICKS:
+            tricks.addAction(TRICKS[name], lambda n=name: win.do_trick(n))
     menu.addAction("Come here!", win.come_here)
     menu.addAction("📸 Take a photo", win.take_photo)
     menu.addSeparator()

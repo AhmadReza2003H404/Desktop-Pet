@@ -358,7 +358,132 @@ class Laser(Special):
         return False
 
 
+class Dance(Special):
+    """Bust a move: bounce and sway on the spot for a few seconds."""
+    name = "dance"
+    pose = "dance"
+
+    def __init__(self, brain, body, area, cursor_x, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        self.duration = random.uniform(3.0, 4.5)
+        brain.events.append("dance")
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        self.t += dt
+        self.brain.facing = 1 if int(self.t / 0.55) % 2 else -1
+        return self.t > self.duration
+
+
+class Phase(Special):
+    """Ghost move: turn see-through and glide across the screen."""
+    name = "phase"
+    pose = "phase"
+
+    def __init__(self, brain, body, area, cursor_x, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        lo, hi = self.edges(body, area)
+        direction = 1 if hi - body.x > body.x - lo else -1
+        self.target = max(lo, min(hi, body.x + direction * random.uniform(300, 650)))
+        brain.events.append("wheee")
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        self.t += dt
+        fade_in = min(1.0, self.t / 0.4)
+        if self.run_to(body, self.target, self.brain.pet.walk_speed * 5, dt):
+            self.value = max(0.0, self.value - dt * 2.5)  # solid again
+            return self.value <= 0
+        self.value = fade_in
+        return False
+
+
+class Haunt(Special):
+    """Ghost move: float way up the screen, wobble about spookily, drift back down."""
+    name = "haunt"
+    pose = "float"
+
+    def __init__(self, brain, body, area, cursor_x, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        self.height = 0.0
+        self.peak = random.uniform(140, 280)
+        self.stay = random.uniform(3.0, 5.0)
+        self.phase = "up"
+        brain.events.append("boo")
+
+    def update(self, dt, body, area, cursor_x):
+        self.t += dt
+        lo, hi = self.edges(body, area)
+        if self.phase == "up":
+            self.height += 110 * dt
+            if self.height >= self.peak:
+                self.phase, self.t = "hover", 0.0
+        elif self.phase == "hover":
+            body.x = max(lo, min(hi, body.x + math.sin(self.t * 1.8) * 90 * dt))
+            self.brain.facing = 1 if math.cos(self.t * 1.8) > 0 else -1
+            if self.t > self.stay:
+                self.phase = "down"
+        else:
+            self.height -= 80 * dt
+            if self.height <= 0:
+                body.y = body.floor(area)
+                return True
+        body.y = body.floor(area) - self.height
+        return False
+
+
+class Rocket(Special):
+    """Robot move: crouch, fire the boot rockets, and blast off."""
+    name = "rocket"
+    pose = "crouch"
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        self.t += dt
+        if self.t < 0.6:
+            return False
+        self.pose = "rocket"
+        if self.t < 0.75:
+            return False
+        body.vy = -random.uniform(900, 1200)
+        body.vx = self.brain.facing * random.uniform(80, 200)
+        self.brain.squash = -0.25
+        self.brain.events.append("rocket")
+        self.brain.set_state(State.FALLING)
+        return True
+
+
+class Dots(Special):
+    """Dot Dash, the arcade mini-game: race to gobble the nearest dot."""
+    name = "dots"
+
+    def __init__(self, brain, body, area, cursor_x, target: Callable[[float], float | None] | None = None,
+                 active: Callable[[], bool] | None = None, **kwargs):
+        super().__init__(brain, body, area, cursor_x)
+        self.target = target or (lambda x: None)
+        self.active = active or (lambda: False)
+
+    def update(self, dt, body, area, cursor_x):
+        body.step(dt, area)
+        if not self.active():
+            return True
+        dot = self.target(body.x + body.w / 2)
+        if dot is None:
+            return True
+        lo, hi = self.edges(body, area)
+        speed = self.brain.pet.walk_speed * 2.8 * self.brain.boost
+        self.run_to(body, max(lo, min(hi, dot - body.w / 2)), speed, dt)
+        return False
+
+
 SPECIALS: dict[str, type[Special]] = {
     cls.name: cls for cls in (Zoomies, Pounce, TailChase, Roll, Pronk, Headbutt, BellySlide, Cling, Chase, Flee,
-                              Fetch, Laser)
+                              Fetch, Laser, Dance, Phase, Haunt, Rocket, Dots)
+}
+
+# tricks a pet can be asked to do from the menu (the rest are games and reactions)
+TRICKS = {
+    "zoomies": "Zoomies", "pounce": "Pounce", "tail_chase": "Chase tail", "roll": "Roll",
+    "pronk": "Pronk", "headbutt": "Headbutt", "belly_slide": "Belly slide", "cling": "Climb the edge",
+    "dance": "Dance", "phase": "Phase", "haunt": "Haunt", "rocket": "Rocket jump",
 }

@@ -122,7 +122,13 @@ class Quadruped(Pet):
             return self.pose_slide, v
         if name in ("cling", "cling_sleep"):
             return self.pose_cling, v
-        if name == "stand":
+        if name == "dance":
+            p.translate(0, -abs(math.sin(v.t * 7)) * 7)
+            p.rotate(math.sin(v.t * 7) * 9)
+            return self.pose_stand, replace(v, state=State.WALK, walk_phase=v.t * 14)
+        if name in ("stand", "phase", "float", "rocket"):
+            if name == "phase":
+                p.setOpacity(p.opacity() * (1 - 0.7 * v.special_value))
             return self.pose_stand, replace(v, state=State.IDLE)
         return self.pose_stand, replace(v, state=State.WALK)
 

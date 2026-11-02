@@ -33,20 +33,29 @@ class Effects(QWidget):
         self.setFixedSize(self.W, self.H)
         self.hearts: list[list[float]] = []  # x, y, age, drift
         self.confetti: list[list] = []        # x, y, vx, vy, age, spin, colour
+        self.notes: list[list] = []           # x, y, age, drift, symbol, colour
         self.bubble: str | None = None
         self.bubble_left = 0.0
         self.bubble_important = False
         self.font = QFont("Sans", 1, QFont.Bold)
         self.font.setPixelSize(13)
+        self.note_font = QFont("Sans", 1, QFont.Bold)
+        self.note_font.setPixelSize(18)
 
     @property
     def busy(self) -> bool:
-        return bool(self.hearts or self.bubble or self.confetti)
+        return bool(self.hearts or self.bubble or self.confetti or self.notes)
 
     def heart(self, count: int = 1):
         for _ in range(count):
             self.hearts.append([self.W / 2 + random.uniform(-22, 22), self.H - 8,
                                 -random.uniform(0, 0.35), random.uniform(-1, 1)])
+
+    def music(self, count: int = 1, symbols: str = "♪♫♬"):
+        """Floating music notes (or any little symbols, like ✦ sparkles)."""
+        for _ in range(count):
+            self.notes.append([self.W / 2 + random.uniform(-30, 30), self.H - 14, -random.uniform(0, 0.5),
+                               random.uniform(-1, 1), random.choice(symbols), random.choice(CONFETTI)])
 
     def celebrate(self, pieces: int = 40):
         for _ in range(pieces):
@@ -70,6 +79,12 @@ class Effects(QWidget):
                 h[1] -= 55 * dt
                 h[0] += math.sin(h[2] * 6 + h[3] * 3) * 20 * dt + h[3] * 8 * dt
         self.hearts = [h for h in self.hearts if h[2] < HEART_LIFE]
+        for n in self.notes:
+            n[2] += dt
+            if n[2] > 0:
+                n[1] -= 45 * dt
+                n[0] += math.sin(n[2] * 5 + n[3] * 3) * 30 * dt
+        self.notes = [n for n in self.notes if n[2] < HEART_LIFE * 1.3]
         for c in self.confetti:
             c[3] += 520 * dt  # gravity
             c[0] += c[2] * dt
@@ -94,6 +109,14 @@ class Effects(QWidget):
             p.setOpacity(min(1.0, (CONFETTI_LIFE - age) * 2))
             p.fillRect(QRectF(-3, -1.8, 6, 3.6), colour)
             p.restore()
+        p.setOpacity(1.0)
+        for x, y, age, _, symbol, colour in self.notes:
+            if age < 0:
+                continue
+            p.setOpacity(max(0.0, min(1.0, (HEART_LIFE * 1.3 - age) * 2)))
+            p.setFont(self.note_font)
+            p.setPen(colour.darker(115))
+            p.drawText(QPointF(x - 7, y), symbol)
         p.setOpacity(1.0)
         if self.bubble:
             self._draw_bubble(p)

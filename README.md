@@ -8,9 +8,25 @@ your computer. Works on **Linux** and **Windows**.
 
 ## Features
 
-- **8 animals, 34 looks:** cat and kitten (tabby, gray, black, siamese, tuxedo, calico),
+- **11 kinds of pet, 52 looks:** cat and kitten (tabby, gray, black, siamese, tuxedo, calico),
   dog and puppy (shiba, pug, dalmatian, husky, corgi), panda, polar bear, koala and goat.
   Everything is drawn in code, with googly eyes that follow your mouse.
+- **👾 Retro pixel pets:** three 8-bit arcade-style friends, each with its own tricks.
+  - **Pixel Ghost:** floats instead of walking. It turns see-through and glides across the
+    screen, drifts up to haunt it, and sneaks up on the other pets to shout *BOO!*
+  - **Pixel Slime:** a wobbly jelly blob that hops around and squishes when it lands.
+  - **Pixel Robot:** a little bot with a screen for a face and rocket boots for blasting off.
+
+  ![Pixel pets](docs/pixel-pets.png)
+- **👾 Dot Dash arcade game:** a trail of glowing dots appears along the bottom of your
+  screen and every pet races to gobble them. Power dots give a burst of speed, and bonus
+  stars drop in now and then. When the 60-second clock runs out, the top scorer wins.
+- **🌦 Weather:** snow, rain, autumn leaves, cherry blossoms or fireflies drift over your
+  desktop. *Auto* picks the weather from the season. Clicks pass straight through.
+- **🏆 Achievements:** 20 goals to unlock, from "Hello, friend" to "High score" and "Liftoff".
+  Find them in the right-click menu.
+- **🕺 Dance parties:** any pet can dance (floating music notes included). Pick a specific
+  trick from the new *Tricks* menu.
 - **Always on top:** pets walk along the bottom of your screen above every window.
 - **Play with them:** click to pet, rub your mouse over them to stroke, drag to carry,
   fling to throw, double-click to make them jump.
@@ -159,7 +175,7 @@ py -3 -m venv .venv
 | Rub the mouse over it | Stroke it (sleeping pets stay asleep) |
 | Drag it | Carry it around. Let go mid-drag to throw it |
 | Double-click it | It jumps |
-| Right-click it | The pet menu: feed, play ball, tricks, sit, sleep in a corner, follow your mouse, hats, rename, change animal, size, photos… |
+| Right-click it | The pet menu: feed, play ball, tricks, dance, sit, sleep in a corner, follow your mouse, hats, rename, change animal, size, photos, Dot Dash, weather, achievements… |
 | Click the tray icon | Opens **Pet House** |
 | Double-click the ball | Puts the ball away |
 
@@ -215,14 +231,46 @@ class Fox(Quadruped):
 Save it as `species/fox.py`. The fox then shows up in every menu, in Pet House, and in `--list`
 without any other changes. Look at `species/panda.py` for a short complete example.
 
+### Or a pixel-art one
+
+Subclass `PixelPet` (in `render/pixel.py`) and draw the sprite as text. Each character
+is a colour from the palette (`O` outline, `B` base, `L` light, `S` shade, `P` blush), and
+`.` is see-through. Eyes and mouth are drawn on top, so they still follow your mouse:
+
+```python
+from PySide6.QtGui import QColor
+from render.pixel import EyeBox, PixelPet, palette
+
+
+class Blob(PixelPet):
+    species = "blob"
+    name = "Blob"
+    palettes = {"teal": palette(QColor(80, 200, 190))}
+    variants = ["teal"]
+    eyes = [EyeBox(2, 2), EyeBox(6, 2)]
+    mouth_at = (3, 5)
+    specials = ["pronk", "dance"]
+
+    def frame(self, view):
+        return ["..OOOOOO..",
+                ".OBBBBBBO.",
+                "OBBBBBBBBO",
+                "OBBBBBBBBO",
+                "OBPBBBBPBO",
+                "OBBBBBBBBO",
+                ".OOOOOOOO."]
+```
+
+See `species/slime.py`, `species/ghost.py` and `species/robot.py` for complete examples.
+
 ## Project layout
 
 ```
 main.py            entry point
-core/              behaviour: pet interface, brain, physics, needs, tricks, levels, saving
-render/            drawing: shared skeleton (quadruped.py), faces (rig.py), hats, food
+core/              behaviour: pet interface, brain, physics, needs, tricks, levels, achievements, saving
+render/            drawing: shared skeleton (quadruped.py), pixel-art pets (pixel.py), faces, hats, food
 species/           one file per animal
-ui/                windows: pet window, Pet House, menus, tray, ball, laser, photos, sounds
+ui/                windows: pet window, Pet House, menus, tray, ball, laser, Dot Dash, weather, photos, sounds
 ```
 
 Made with Python and [PySide6](https://doc.qt.io/qtforpython-6/) (Qt).

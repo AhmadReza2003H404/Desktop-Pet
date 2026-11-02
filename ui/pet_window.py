@@ -78,6 +78,7 @@ class PetWindow(QWidget):
         self.last_hover: QPointF | None = None
         self.stroke = 0.0
         self.chat_in = random.uniform(20, 60)
+        self.power_left = 0.0
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
@@ -146,6 +147,7 @@ class PetWindow(QWidget):
         if self.level > before:
             unlocked = progress.unlocked_at(self.level)
             self.effects.celebrate()
+            self.app.best("best_level", self.level)
             self.effects.say(f"Level {self.level}! ♥" + (f" New hat: {unlocked[0]}" if unlocked else ""), 4.5,
                              important=True)
             self.app.sounds.play("boing")
@@ -225,6 +227,7 @@ class PetWindow(QWidget):
         from ui import photo
         path = photo.save([self])
         self.app.sounds.play("shutter")
+        self.app.record("photos")
         self.effects.say(f"📸 saved to Pictures/{path.parent.name}", 4.0, important=True)
         self.effects.heart(2)
         return path
@@ -245,6 +248,10 @@ class PetWindow(QWidget):
             if self.brain.start_special(name, self.body, area):
                 return
 
+    def do_trick(self, name: str):
+        """Menu: a particular trick."""
+        self.brain.start_special(name, self.body, self._area())
+
     def play_ball(self):
         self.app.throw_ball(self)
 
@@ -257,6 +264,7 @@ class PetWindow(QWidget):
         self.effects.heart(3)
         self.app.sounds.play("pop", 0.6)
         self.add_love("pet")
+        self.app.record("pets")
         if not was_asleep and random.random() < 0.4:
             self.say("pet")
 
@@ -297,8 +305,11 @@ class PetWindow(QWidget):
         self._tend_food(dt, area)
         self._tend_ball(area)
         self._tend_laser(area)
+        self._tend_arcade(dt, area)
         self._chatter(dt)
         self.stroke = max(0.0, self.stroke - 120 * dt)
+        if self.brain.doing("dance") and random.random() < dt * 2.5:
+            self.effects.music(1)
 
         if self.brain.state != State.DRAGGED:
             self._sync_position()
@@ -335,6 +346,45 @@ class PetWindow(QWidget):
             if random.random() < 0.15:
                 self.say("laser")
 
+    def _tend_arcade(self, dt: float, area):
+        game = self.app.arcade
+        if game is None:
+            self.brain.boost = 1.0
+            return
+        if self.brain.boost > 1.0:
+            self.power_left -= dt
+            if self.power_left <= 0:
+                self.brain.boost = 1.0
+        centre = self.body.x + self.body.w / 2
+        if self.brain.doing("dots") or self.brain.state == State.FALLING:
+            reach = self.body.w * 0.32
+            for kind in game.eat(id(self), self.pet_name, centre - reach, centre + reach):
+                self._ate_dot(kind)
+            return
+        if (game.running and self.brain.mode != Mode.STAY and not self.food
+                and self.brain.state in (State.IDLE, State.SIT, State.WALK, State.HAPPY)):
+            if self.brain.start_special("dots", self.body, area, target=game.nearest,
+                                        active=lambda: self.app.arcade is game and game.running):
+                if random.random() < 0.2:
+                    self.say("arcade")
+
+    def _ate_dot(self, kind: str):
+        self.needs.fullness = min(100.0, self.needs.fullness + 0.6)
+        self.needs.cheer(0.8)
+        self.app.record("dots")
+        if kind == "dot":
+            self.app.sounds.play("coin", 0.35)
+            return
+        self.app.sounds.play("powerup", 0.7)
+        self.effects.music(3, "✦✧★")
+        if kind == "power":
+            self.brain.boost, self.power_left = 1.8, 5.0
+            self.app.record("powerups")
+            self.say("power")
+        else:
+            self.effects.heart(2)
+            self.add_love("trick")
+
     def _tend_ball(self, area):
         ball = self.app.ball
         if (ball is None or not ball.alive or self.food or self.brain.mode != Mode.WANDER
@@ -350,6 +400,7 @@ class PetWindow(QWidget):
             sounds.play("munch")
             self.needs.fed()
             self.add_love("fed")
+            self.app.record("meals")
             self.effects.heart(2)
             self.say("fed")
             if self.food:
@@ -366,6 +417,22 @@ class PetWindow(QWidget):
             sounds.play("pop", 0.8)
             self.needs.cheer(3)
             self.add_love("kick")
+            self.app.record("kicks")
+        elif event == "trick":
+            self.add_love("trick")
+            self.app.record("tricks")
+        elif event == "dance":
+            sounds.play("tune", 0.6)
+            self.effects.music(5)
+            self.say("dance")
+            self.app.record("dances")
+        elif event == "boo":
+            sounds.play(self.pet.voice)
+            self.say("boo")
+        elif event == "rocket":
+            sounds.play("whoosh")
+            self.effects.music(2, "✦★")
+            self.app.record("rockets")
 
     def _chatter(self, dt: float):
         self.chat_in -= dt
@@ -475,6 +542,7 @@ class PetWindow(QWidget):
             if math.hypot(self.body.vx, self.body.vy) > BIG_THROW:
                 self.app.sounds.play("whoosh", 0.8)
                 self.say("thrown")
+                self.app.record("throws")
         elif self.press_pos is not None:
             self.pet_it()
         self.dragging = False

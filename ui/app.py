@@ -6,20 +6,23 @@ import time
 from itertools import combinations
 
 from PySide6.QtCore import QObject, QTimer
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QActionGroup, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from core import save
+from core.achievements import ACHIEVEMENTS, Achievement, Tracker
 from core.behavior import Mode
 from core.needs import Needs
 from core.pet import Pet, State
 from ui import system
+from ui.arcade import DotDash
 from ui.ball import Ball
 from ui.laser import Laser
 from ui.menu import SIZES
 from ui.pet_window import PetWindow
 from ui.sound import Sounds
 from ui.tray import Tray
+from ui.weather import KINDS as WEATHER, Weather, resolve as resolve_weather
 
 AUTOSAVE_MS = 30_000
 MAX_PETS = 10
@@ -46,6 +49,8 @@ class PetApp(QObject):
         self.panel = None  # Pet House window, made on first open
         self.laser: Laser | None = None
         self.laser_until = 0.0
+        self.arcade: DotDash | None = None
+        self.weather: Weather | None = None
         self.away_since: float | None = None  # wall-clock time you left the computer
         self.ticks = 0
         self.max_pets = MAX_PETS
@@ -58,6 +63,8 @@ class PetApp(QObject):
         self.breaks_on = bool(settings.get("breaks", False))
         self.break_minutes = int(settings.get("break_minutes", 50))
         self.next_break = time.monotonic() + self.break_minutes * 60
+        self.achievements = Tracker.from_dict(state.get("achievements"))
+        self.weather_kind = settings.get("weather", "off") if settings.get("weather") in WEATHER else "off"
         records = state.get("pets", [])
         away = time.time() - state.get("saved_at", time.time())
         if species:  # command line wins, but keep the old pet's name and needs
@@ -70,6 +77,9 @@ class PetApp(QObject):
 
         for win in self.windows:
             win.show_all()
+        self._count_family()
+        if self.weather_kind != "off":
+            self._start_weather()
         if self.tray:
             self.tray.refresh()
             self.tray.show()
@@ -119,6 +129,7 @@ class PetApp(QObject):
         self.windows.append(win)
         win.show_all()
         win.say("friend")
+        self._count_family()
         self.save()
         if self.panel:
             self.panel.rebuild()
@@ -235,6 +246,7 @@ class PetApp(QObject):
         shown = [w for w in self.windows]
         path = photo.save(shown)
         self.sounds.play("shutter")
+        self.record("photos")
         for win in shown:
             win.effects.heart(2)
         shown[0].effects.say(f"📸 group photo saved to Pictures/{path.parent.name}", 4.0, important=True)
@@ -254,6 +266,12 @@ class PetApp(QObject):
         return win.body.x + win.body.w / 2
 
     def _greet(self, a: PetWindow, b: PetWindow):
+        ghosts = [w for w in (a, b) if w.pet.species == "ghost"]
+        if ghosts and random.random() < 0.6:
+            ghost = ghosts[0]
+            victim = b if ghost is a else a
+            self._boo(ghost, victim)
+            return
         for me, other in ((a, b), (b, a)):
             me.brain.petted()
             me.brain.facing = 1 if self._centre(other) > self._centre(me) else -1
@@ -261,6 +279,102 @@ class PetApp(QObject):
             me.needs.cheer(5)
             me.add_love("greet")
         a.say("friend")
+
+    def _boo(self, ghost: PetWindow, victim: PetWindow):
+        """A ghost sneaks up on a friend and spooks them. They jump out of their skin."""
+        ghost.brain.facing = 1 if self._centre(victim) > self._centre(ghost) else -1
+        ghost.brain.petted()
+        ghost.say("boo")
+        ghost.effects.music(2, "✦✧")
+        ghost.add_love("greet")
+        if victim.pet.species == "ghost":
+            victim.say("boo")  # you can't spook a ghost
+            victim.effects.heart(1)
+            return
+        victim.brain.jump(victim.body)
+        victim.say("spooked")
+        self.sounds.play("boing", 0.8)
+        self.record("boos")
+
+    # --- arcade, weather, achievements ---------------------------------------
+
+    def toggle_arcade(self):
+        if self.arcade:
+            game, self.arcade = self.arcade, None
+            game.stop()
+            return
+        area = QGuiApplication.primaryScreen().availableGeometry()
+        self.arcade = DotDash(area, self._arcade_finished)
+        self.arcade.show()
+        self.sounds.play("powerup")
+        for win in self.windows:
+            if win.isVisible() and win.brain.state == State.SLEEP:
+                win.command(State.IDLE)  # nobody sleeps through the arcade
+        self.record("games")
+
+    def _arcade_finished(self, scores: dict[int, tuple[str, int]]):
+        self.arcade = None
+        if self.panel:
+            self.panel.arcade.setChecked(False)
+        if not scores:
+            return
+        best = max(score for _, score in scores.values())
+        self.best("best_score", best)
+        for win in self.windows:
+            name, score = scores.get(id(win), (win.pet_name, 0))
+            if score == best and best > 0:
+                win.effects.celebrate(50)
+                win.effects.say(f"I WON with {score} points! 🏆", 5.0, important=True)
+                win.love += 3
+                win.brain.start_special("dance", win.body, win._area())
+            elif score:
+                win.say("lost")
+        self.sounds.play("fanfare")
+        self.save()
+
+    def set_weather(self, kind: str):
+        self.weather_kind = kind
+        if self.weather:
+            self.weather.stop()
+            self.weather = None
+        if kind != "off":
+            self._start_weather()
+            self.record("weather")
+            shown = [w for w in self.windows if w.isVisible()]
+            if shown:
+                random.choice(shown).say(resolve_weather(kind))
+        self.save()
+
+    def _start_weather(self):
+        if resolve_weather(self.weather_kind) == "off":
+            return
+        self.weather = Weather(self.weather_kind)
+        self.weather.show()
+
+    def record(self, stat: str, amount: int = 1):
+        self._announce(self.achievements.bump(stat, amount))
+
+    def best(self, stat: str, value: int):
+        self._announce(self.achievements.at_least(stat, value))
+
+    def _count_family(self):
+        self.best("pets_at_once", len(self.windows))
+        self.best("kinds_at_once", len({w.pet.species for w in self.windows}))
+
+    def _announce(self, unlocked: list[Achievement]):
+        if not unlocked:
+            return
+        shown = [w for w in self.windows if w.isVisible()] or self.windows
+        if not shown:
+            return
+        win = random.choice(shown)
+        a = unlocked[0]
+        win.effects.celebrate(50)
+        win.effects.say(f"{a.icon} Achievement unlocked: {a.title}!", 6.0, important=True)
+        self.sounds.play("fanfare")
+        if self.tray and self.tray.isVisible():
+            self.tray.showMessage("Achievement unlocked!", f"{a.icon} {a.title}: {a.description}",
+                                  QSystemTrayIcon.Information, 5000)
 
     # --- the ball ------------------------------------------------------------
 
@@ -305,6 +419,25 @@ class PetApp(QObject):
         laser = menu.addAction("🔴 Laser pointer", self.toggle_laser)
         laser.setCheckable(True)
         laser.setChecked(self.laser is not None)
+        arcade = menu.addAction("👾 Dot Dash (arcade game)", self.toggle_arcade)
+        arcade.setCheckable(True)
+        arcade.setChecked(self.arcade is not None)
+        weather = menu.addMenu("🌦 Weather")
+        group = QActionGroup(weather)
+        for kind, label in WEATHER.items():
+            action = weather.addAction(label, lambda k=kind: self.set_weather(k))
+            action.setCheckable(True)
+            action.setChecked(self.weather_kind == kind)
+            group.addAction(action)
+        done = len(self.achievements.unlocked)
+        trophies = menu.addMenu(f"🏆 Achievements ({done}/{len(ACHIEVEMENTS)})")
+        for a in ACHIEVEMENTS:
+            have, goal = self.achievements.progress(a)
+            got = a.id in self.achievements.unlocked
+            label = f"{a.icon} {a.title}: {a.description}" if got else \
+                f"🔒 {a.title}: {a.description}" + (f" ({have}/{goal})" if goal > 1 else "")
+            item = trophies.addAction(label)
+            item.setEnabled(got)
         if len(self.windows) > 1:
             menu.addAction("📸 Group photo", self.group_photo)
         add = menu.addMenu("Add a pet")
@@ -333,7 +466,8 @@ class PetApp(QObject):
         save.save({
             "saved_at": time.time(),
             "settings": {"sounds": self.sounds.enabled, "breaks": self.breaks_on,
-                         "break_minutes": self.break_minutes},
+                         "break_minutes": self.break_minutes, "weather": self.weather_kind},
+            "achievements": self.achievements.to_dict(),
             "pets": [{
                 "species": w.pet.species,
                 "variant": w.pet.variant,
@@ -361,4 +495,8 @@ class PetApp(QObject):
             self.panel.close()
         if self.laser:
             self.laser.stop()
+        if self.arcade:
+            self.arcade.stop()
+        if self.weather:
+            self.weather.stop()
         QApplication.quit()

@@ -21,7 +21,7 @@ except ImportError:  # Qt built without multimedia
 
 RATE = 22050
 CACHE = cache_dir() / "sounds"
-VERSION = 1  # bump to regenerate the files after changing a recipe
+VERSION = 2  # bump to regenerate the files after changing a recipe
 
 
 def _tone(seconds: float, freq, harmonics=(1.0,), vibrato=(0.0, 0.0), envelope=None, noise=0.0):
@@ -78,6 +78,20 @@ RECIPES = {
     + _lowpass(_tone(0.05, 500, noise=1.0, envelope=lambda x: (1 - x) ** 2), 0.5),
     "squeak": lambda: sum((_tone(0.09, lambda x: 1300 + 500 * x, envelope=lambda x: math.sin(math.pi * x))
                            + _silence(0.05) for _ in range(2)), []),
+    # retro / arcade pets and the Dot Dash game
+    "ooo": lambda: _tone(0.7, lambda x: 330 + 140 * math.sin(math.pi * x), harmonics=(1, 0.3), vibrato=(6, 25),
+                         envelope=lambda x: math.sin(math.pi * x)),
+    "bloop": lambda: _tone(0.18, lambda x: 260 + 520 * x * x, harmonics=(1, 0.4), envelope=lambda x: (1 - x) ** 1.5),
+    "beep": lambda: sum((_tone(0.08, f, harmonics=(1, 0, 0.33, 0, 0.2), envelope=lambda x: 1 - x * 0.5)
+                         + _silence(0.04) for f in (880, 1175)), []),
+    "coin": lambda: _tone(0.05, 988, harmonics=(1, 0, 0.3), envelope=lambda x: 1)
+    + _tone(0.16, 1319, harmonics=(1, 0, 0.3), envelope=lambda x: (1 - x) ** 1.5),
+    "powerup": lambda: sum((_tone(0.06, f, harmonics=(1, 0, 0.3), envelope=lambda x: 1 - x * 0.3)
+                            for f in (523, 659, 784, 1047, 1319, 1568)), []),
+    "fanfare": lambda: sum((_tone(d, f, harmonics=(1, 0, 0.35, 0, 0.2), envelope=lambda x: (1 - x * 0.6))
+                            for f, d in ((523, 0.1), (659, 0.1), (784, 0.1), (1047, 0.32))), []),
+    "tune": lambda: sum((_tone(0.12, f, harmonics=(1, 0, 0.3), envelope=lambda x: (1 - x) ** 0.7)
+                         for f in (659, 784, 880, 784, 659, 523, 587, 659)), []),
 }
 
 

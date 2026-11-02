@@ -80,6 +80,17 @@ class Pet(ABC):
         "welcome": ["welcome back! ♥", "you're back!!", "I missed you!", "where did you go?!"],
         "laser": ["THE DOT!!", "I WILL CATCH IT", "red dot red dot red dot"],
         "photo": ["say cheese!", "*poses*", "get my good side"],
+        "dance": ["♪ ♫ ♪", "*shows off some moves*", "dance party!!"],
+        "spooked": ["AAAAA!", "a GHOST?!", "don't DO that!!", "*jumps out of skin*"],
+        "arcade": ["dots!!", "mine mine mine!", "nom nom nom", "I'm gonna win!"],
+        "power": ["POWER UP! ⚡", "I feel FAST", "zoom zoom!"],
+        "won": ["I WON! 🏆", "champion!!", "high score, baby!"],
+        "lost": ["good game!", "rematch?", "I let you win"],
+        "snow": ["snow!! ❄", "brrr, it's chilly", "can we build a snowpet?"],
+        "rain": ["it's raining!", "*shakes off water*", "puddles!!"],
+        "leaves": ["crunchy leaves!", "autumn vibes 🍂", "*chases a leaf*"],
+        "petals": ["so pretty 🌸", "*sneezes at a petal*", "spring!!"],
+        "fireflies": ["tiny lights!", "ooh, sparkly ✨", "can I catch one?"],
     }
 
     def __init__(self, variant: str | None = None, scale: float = 1.0):

@@ -86,7 +86,53 @@ def _grass(p: QPainter, w: float, h: float):
     rig.fill_part(p, tuft, QColor(225, 200, 95))  # hay
 
 
+def _candy(p: QPainter, w: float, h: float):
+    for x, y, color in ((-w * 0.15, -h * 0.14, QColor(255, 120, 170)), (w * 0.14, -h * 0.2, QColor(120, 200, 255))):
+        for side in (-1, 1):  # twisted wrapper ends
+            end = QPainterPath(QPointF(x + side * w * 0.08, y))
+            end.lineTo(x + side * w * 0.2, y - h * 0.09)
+            end.lineTo(x + side * w * 0.2, y + h * 0.09)
+            end.closeSubpath()
+            rig.fill_part(p, end, color.lighter(120))
+        rig.fill_part(p, rig.ellipse_path(QPointF(x, y), w * 0.1, h * 0.1), color)
+        p.setPen(rig.outline_pen(1.5, QColor(255, 255, 255)))
+        p.drawLine(QPointF(x - w * 0.04, y - h * 0.04), QPointF(x + w * 0.03, y + h * 0.05))
+
+
+def _berries(p: QPainter, w: float, h: float):
+    for x, y, color in ((-w * 0.13, -h * 0.1, QColor(200, 50, 90)), (w * 0.12, -h * 0.12, QColor(110, 70, 190)),
+                        (0, -h * 0.26, QColor(230, 60, 80))):
+        rig.fill_part(p, rig.ellipse_path(QPointF(x, y), w * 0.11, w * 0.11), color)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, 170))
+        p.drawEllipse(QPointF(x - w * 0.04, y - w * 0.04), w * 0.025, w * 0.025)
+    leaf = QPainterPath(QPointF(0, -h * 0.36))
+    leaf.quadTo(w * 0.12, -h * 0.5, w * 0.2, -h * 0.4)
+    leaf.quadTo(w * 0.1, -h * 0.32, 0, -h * 0.36)
+    rig.fill_part(p, leaf, QColor(110, 190, 90))
+
+
+def _battery(p: QPainter, w: float, h: float):
+    p.save()
+    p.rotate(-12)
+    cell = QPainterPath()
+    cell.addRoundedRect(QRectF(-w * 0.28, -h * 0.34, w * 0.5, h * 0.3), 4, 4)
+    rig.fill_part(p, cell, QColor(90, 210, 120))
+    tip = QPainterPath()
+    tip.addRoundedRect(QRectF(w * 0.22, -h * 0.25, w * 0.06, h * 0.12), 2, 2)
+    rig.fill_part(p, tip, QColor(200, 200, 210))
+    bolt = QPolygonF([QPointF(0, -h * 0.32), QPointF(-w * 0.07, -h * 0.18), QPointF(-w * 0.01, -h * 0.18),
+                      QPointF(-w * 0.04, -h * 0.06), QPointF(w * 0.07, -h * 0.21), QPointF(w * 0.01, -h * 0.21)])
+    p.setPen(Qt.NoPen)
+    p.setBrush(QColor(255, 240, 120))
+    p.drawPolygon(bolt)
+    p.restore()
+
+
 DRAWERS = {
+    "candy": _candy,
+    "berries": _berries,
+    "battery": _battery,
     "fish": _fish,
     "bone": _bone,
     "bamboo": _bamboo,
